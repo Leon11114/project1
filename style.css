@@ -13,7 +13,13 @@ header{
   background-color: #6C8CD5;
 }
 main{
-  padding: 10px;
+  display: flex;
+  align-items: center;
+  width: 100%;
+  flex-direction: column;
+  flex-wrap: nowrap;
+  align-content: center;
+  justify-content: flex-start;
   width: 100%;
 }
 footer{
@@ -22,15 +28,13 @@ footer{
   background-color: #48036F;
 }
 span{
-  padding: 5px;
+  display: inline-flex;
   width: fit-content;
-  background-color: #6C8CD5;
-  color: #06266F;
 }
 .txtV{
   display: inline-flex;
   background-color: white;
-  font-size: 50px;
+  font-size: 35px;
   flex-wrap: nowrap;
 }
 .body{
@@ -49,12 +53,15 @@ span{
     align-content: flex-start;
     justify-content: space-between;
 }
+.menu{
+  margin-right:15px;
+  color: #06266F;
+}
 .main{
     display: flex;
     flex-wrap: nowrap;
     align-items: center;
     height: 85%;
-    with: auto;
     background-color: white;
     flex-direction: column;
     align-content: center;
@@ -80,6 +87,7 @@ span{
     justify-content: flex-end;
 }
 .color1{
+  padding: 3px;
   width: fit-content;
   background-color: #5F2580;
   color: #AD66D5;
@@ -97,16 +105,19 @@ span{
 .firsth{
   flex-direction: row;
   height: fit-content;
+  width: 55%;
 }
 .second{
   flex-direction: column;
   max-height: 2600px;
+  width: 55%;
 }
 .third{
   background-color: #f4f7f9;
   flex-direction: column;
   padding: 40px;
   height: 700px;
+  width: 100%;
 }
 .bpart{
   height: 400px;
