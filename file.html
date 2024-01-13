@@ -1,0 +1,252 @@
+<html>
+	<head>
+		<title>JSLoader</title>
+	</head>
+
+	<body>
+		<input id="input_file" type="file" multiple/>
+		<div id="button"></div>
+	</body>
+</html>
+
+<style>
+	#input_file{
+		position:absolute; 
+		top:-999px; 
+		visibility:hidden
+	}
+
+	#button { 
+		width: 150px; 
+		height:50px; 
+		border-radius: 10px;
+		background-color: green;
+	}
+</style>
+
+<script>
+	var input = document.querySelector("#input_file");
+	var btn = document.querySelector("#button");
+	var cv = document.createElement("canvas");
+	var cvContext = cv.getContext("2d");
+
+	var files;
+	var reader = new FileReader();
+	var BlobBuilder = window.BlobBuilder || window.WebKitBlobBuilder || window.MozBlobBuilder;
+	var getBuffer = GetBufferFunc();
+	var f_index = 0;
+
+	btn.onclick = function() {
+	  input.click();
+	};
+
+	input.onchange = function() {
+	  files = input.files;
+	  loadFile();
+	};
+
+	reader.onload = function(e) {
+	  var im = new Image();
+
+	  im.onload = function(e) {
+
+		var blobData = [];
+		var form;
+		var current = files[f_index];
+		var names = [encodeURI(current.name), encodeURI('100_100_' + current.name)];
+
+		if (window.FormData) {
+		  blobData[0] = current;
+		} else {
+		  cv.width = im.width;
+		  cv.height = im.height;
+		  cvContext.drawImage(im, 0, 0);
+		  blobData[0] = getBuffer(cv, current.type, names[0]);
+		}
+
+		cv.width = 100;
+		cv.height = 100;
+		cvContext.drawImage(im, 0, 0, 100, 100);
+		blobData[1] = getBuffer(cv, current.type, names[1])
+
+		var xhr = new XMLHttpRequest();
+
+		xhr.open("POST", "load.php", true);
+
+		xhr.onload = function() {
+		  console.log(this.response);
+		  f_index++;
+		  loadFile();
+		}
+
+		xhr.onerror = function() {
+		  console.log('error upload');
+		  f_index++;
+		  loadFile();
+		}
+
+		if (xhr.upload) {
+		  xhr.upload.onprogress = function(e) {
+			console.log(e.position / e.totalSize) * 100;
+		  }
+		}
+
+		if (window.FormData) {
+		  form = new FormData();
+
+		  for (var i = 0; i < blobData.length; i++) {
+			form.append(names[i], blobData[i]);
+		  }
+		} else {
+		  var fBuilder = new FormBuilder();
+
+		  for (var i = 0; i < blobData.length; i++) {
+			fBuilder.addFile(names[i], blobData[i]);
+		  }
+
+		  form = fBuilder.getForm();
+
+		  xhr.setRequestHeader('Content-type', 'multipart/form-data; boundary=' + fBuilder.BOUND);
+		}
+
+		xhr.send(form);
+	  }
+	  im.src = reader.result;
+	};
+
+	function loadFile() {
+	  if (f_index < files.length) {
+		reader.readAsDataURL(files[f_index]);
+	  } else {
+		console.log('complete');
+	  }
+	}
+
+	//-------------------------------------------------------------------
+
+	function GetBufferFunc() {
+	  if (cv.mozGetAsFile) {
+		return function(canva, type, name) {
+		  var blobData = cv.mozGetAsFile(name, type);
+		  return blobData;
+		}
+	  } else {
+		var StrToBuffer = function(canva, type) {
+		  var sBase64 = canva.toDataURL(type, 1);
+		  var aBase64 = sBase64.split(',');
+
+		  var sData = atob(aBase64[1]);
+
+		  var aBufferView = new Uint8Array(sData.length);
+
+
+		  for (var i = 0; i < aBufferView.length; i++) {
+			aBufferView[i] = sData.charCodeAt(i);
+		  }
+		  return aBufferView;
+		}
+
+		if (BlobBuilder) {
+		  return function(canva, type) {
+			var builder = new BlobBuilder();
+			builder.append(StrToBuffer(canva, type).buffer);
+			blobData = builder.getBlob(type);
+
+			return blobData;
+		  }
+		} else {
+		  return StrToBuffer;
+		}
+	  }
+
+	}
+
+	//-------------------------------------------------------------------
+
+	function FormBuilder() {
+
+	  this.getBoundary = function() {
+		var _boundary = "";
+
+		for (var i = 0; i < 0x20; i++) {
+		  _boundary += String.fromCharCode(97 + Math.random() * 25);
+		}
+
+		return _boundary;
+	  }
+
+
+	  this.addFile = function(name, buffer) {
+		var sHeader = this.ADDB + this.BOUND;
+		sHeader += this.ENTER;
+		sHeader += 'Content-Disposition: form-data; name="' + name + '"; filename="' + name + '"';
+		sHeader += this.ENTER;
+		sHeader += 'Content-Type: application/octet-stream';
+
+		sHeader += this.ENTER;
+		sHeader += this.ENTER;
+
+		this.header = this.sumBuffers(this.header, this.StrToBuffer(sHeader), buffer, this.EnterBuffer);
+	  }
+
+	  this.addParam = function(name, value) {
+		var sHeader = this.ADDB + this.BOUND;
+		sHeader += this.ENTER;
+		sHeader += 'Content-Disposition: form-data; name="' + name + '"';
+		sHeader += this.ENTER;
+		sHeader += this.ENTER;
+		sHeader += value;
+		sHeader += this.ENTER;
+
+		this.header = this.sumBuffers(this.header, this.StrToBuffer(sHeader));
+	  }
+
+
+	  this.getForm = function() {
+		var sHeader = this.ENTER;
+		sHeader += this.ENTER;
+		sHeader += (this.ADDB + this.BOUND + this.ADDB);
+
+		var aHeader = this.StrToBuffer(sHeader);
+
+		return this.sumBuffers(this.header, aHeader).buffer;
+	  }
+
+
+
+	  this.StrToBuffer = function(str) {
+		var buffer = new Uint8Array(str.length);
+
+		for (var i = 0; i < buffer.length; i++) {
+		  buffer[i] = str.charCodeAt(i);
+		}
+
+		return buffer;
+	  }
+
+	  this.sumBuffers = function() {
+		var sumLength = 0,
+		  position = 0,
+		  aSumHeader;
+
+		for (var i = 0; i < arguments.length; i++) {
+		  sumLength += arguments[i].length;
+		}
+		aSumHeader = new Uint8Array(sumLength);
+
+		for (var i = 0; i < arguments.length; i++) {
+		  aSumHeader.set(arguments[i], position);
+		  position += arguments[i].length;
+		}
+
+		return aSumHeader;
+	  }
+
+	  this.BOUND = this.getBoundary();
+	  this.ENTER = "\r\n";
+	  this.EnterBuffer = this.StrToBuffer(this.ENTER);
+	  this.ADDB = "--";
+
+	  this.header = new Uint8Array(0);
+	}
+</script>
